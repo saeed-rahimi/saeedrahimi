@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>مدیریت کانفیگ‌ها - Server24</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="nav-brand">Server24 - پنل مدیریت</div>
+            <div class="nav-menu">
+                <a href="admin.html" class="nav-link">داشبورد</a>
+                <a href="admin-users.html" class="nav-link">کاربران</a>
+                <a href="admin-configs.html" class="nav-link active">کانفیگ‌ها</a>
+                <a href="dashboard.html" class="nav-link">پنل کاربری</a>
+                <a href="#" id="logoutBtn" class="nav-link">خروج</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="page-header">
+            <h1>مدیریت کانفیگ‌ها</h1>
+            <p>لیست تمام کانفیگ‌های سیستم</p>
+        </div>
+
+        <div class="section">
+            <div id="configsList">
+                <p>در حال بارگذاری...</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const userStr = localStorage.getItem('user');
+        if (!userStr) {
+            window.location.href = 'login.html';
+        }
+
+        const user = JSON.parse(userStr);
+
+        if (!user.is_admin) {
+            alert('شما دسترسی به این بخش ندارید!');
+            window.location.href = 'dashboard.html';
+        }
+
+        async function loadConfigs() {
+            try {
+                const response = await fetch('/api/admin/configs');
+                if (response.ok) {
+                    const configs = await response.json();
+                    const configsDiv = document.getElementById('configsList');
+                    
+                    if (configs.length === 0) {
+                        configsDiv.innerHTML = '<p>هیچ کانفیگی ثبت نشده است.</p>';
+                    } else {
+                        configsDiv.innerHTML = `
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>ایدی</th>
+                                        <th>کاربر</th>
+                                        <th>UUID</th>
+                                        <th>پورت</th>
+                                        <th>حجم کل</th>
+                                        <th>مصرف شده</th>
+                                        <th>وضعیت</th>
+                                        <th>عملیات</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${configs.map(c => `
+                                        <tr>
+                                            <td>${c.id}</td>
+                                            <td>${c.user_id}</td>
+                                            <td>${c.uuid.substring(0, 8)}...</td>
+                                            <td>${c.port}</td>
+                                            <td>${c.total_gb} GB</td>
+                                            <td>${c.used_gb.toFixed(2)} GB</td>
+                                            <td>
+                                                <span class="status-badge ${c.is_active ? 'active' : 'inactive'}">
+                                                    ${c.is_active ? 'فعال' : 'غیرفعال'}
+                                                </span>
+                                            </td>
+                                            <td>
+                                                <button class="btn btn-danger" onclick="deleteConfig(${c.id})">حذف</button>
+                                            </td>
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                        `;
+                    }
+                }
+            } catch (error) {
+                console.error('Error loading configs:', error);
+            }
+        }
+
+        async function deleteConfig(configId) {
+            if (!confirm('آیا از حذف این کانفیگ اطمینان دارید؟')) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/configs/${configId}`, {
+                    method: 'DELETE'
+                });
+
+                if (response.ok) {
+                    alert('✅ کانفیگ با موفقیت حذف شد.');
+                    loadConfigs();
+                } else {
+                    alert('خطا در حذف کانفیگ.');
+                }
+            } catch (error) {
+                console.error('Error deleting config:', error);
+                alert('خطا در ارتباط با سرور');
+            }
+        }
+
+        loadConfigs();
+
+        document.getElementById('logoutBtn').addEventListener('click', function() {
+            localStorage.removeItem('user');
+            window.location.href = 'login.html';
+        });
+    </script>
+</body>
+</html>
+

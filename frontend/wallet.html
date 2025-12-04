@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>کیف پول - Server24</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="nav-brand">Server24</div>
+            <div class="nav-menu">
+                <a href="dashboard.html" class="nav-link">داشبورد</a>
+                <a href="buy.html" class="nav-link">خرید حجم</a>
+                <a href="wallet.html" class="nav-link active">کیف پول</a>
+                <a href="profile.html" class="nav-link">پروفایل</a>
+                <a href="tickets.html" class="nav-link">پشتیبانی</a>
+                <a href="#" id="logoutBtn" class="nav-link">خروج</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="page-header">
+            <h1>کیف پول</h1>
+            <p>مدیریت موجودی و تراکنش‌ها</p>
+        </div>
+
+        <div class="section">
+            <div class="stat-card" style="max-width: 400px; margin: 0 auto 2rem;">
+                <div class="stat-icon">💰</div>
+                <div class="stat-info">
+                    <h3>موجودی فعلی</h3>
+                    <p id="currentBalance">0 تومان</p>
+                </div>
+            </div>
+
+            <h2>تاریخچه تراکنش‌ها</h2>
+            <div id="walletHistory">
+                <p>در حال بارگذاری...</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const userStr = localStorage.getItem('user');
+        if (!userStr) {
+            window.location.href = 'login.html';
+        }
+
+        const user = JSON.parse(userStr);
+
+        async function loadWallet() {
+            try {
+                // بارگذاری موجودی
+                const userResponse = await fetch(`/api/users/${user.telegram_id}`);
+                if (userResponse.ok) {
+                    const userData = await userResponse.json();
+                    document.getElementById('currentBalance').textContent = 
+                        userData.balance.toLocaleString() + ' تومان';
+                }
+
+                // بارگذاری تاریخچه
+                const historyResponse = await fetch(`/api/wallet/${user.id}/history`);
+                if (historyResponse.ok) {
+                    const history = await historyResponse.json();
+                    const historyDiv = document.getElementById('walletHistory');
+                    
+                    if (history.length === 0) {
+                        historyDiv.innerHTML = '<p>هیچ تراکنشی ثبت نشده است.</p>';
+                    } else {
+                        historyDiv.innerHTML = `
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>مبلغ</th>
+                                        <th>توضیحات</th>
+                                        <th>تاریخ</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${history.map(t => `
+                                        <tr>
+                                            <td class="${t.amount >= 0 ? 'text-success' : 'text-danger'}">
+                                                ${t.amount >= 0 ? '+' : ''}${t.amount.toLocaleString()} تومان
+                                            </td>
+                                            <td>${t.description || '-'}</td>
+                                            <td>${new Date(t.created_at).toLocaleString('fa-IR')}</td>
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                        `;
+                    }
+                }
+            } catch (error) {
+                console.error('Error loading wallet:', error);
+            }
+        }
+
+        loadWallet();
+
+        document.getElementById('logoutBtn').addEventListener('click', function() {
+            localStorage.removeItem('user');
+            window.location.href = 'login.html';
+        });
+    </script>
+</body>
+</html>
+

@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>پروفایل - Server24</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="nav-brand">Server24</div>
+            <div class="nav-menu">
+                <a href="dashboard.html" class="nav-link">داشبورد</a>
+                <a href="buy.html" class="nav-link">خرید حجم</a>
+                <a href="wallet.html" class="nav-link">کیف پول</a>
+                <a href="profile.html" class="nav-link active">پروفایل</a>
+                <a href="tickets.html" class="nav-link">پشتیبانی</a>
+                <a href="#" id="logoutBtn" class="nav-link">خروج</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="page-header">
+            <h1>پروفایل</h1>
+            <p>اطلاعات حساب کاربری</p>
+        </div>
+
+        <div class="section">
+            <div id="profileInfo">
+                <p>در حال بارگذاری...</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const userStr = localStorage.getItem('user');
+        if (!userStr) {
+            window.location.href = 'login.html';
+        }
+
+        const user = JSON.parse(userStr);
+
+        async function loadProfile() {
+            try {
+                const response = await fetch(`/api/users/${user.telegram_id}`);
+                if (response.ok) {
+                    const userData = await response.json();
+                    const profileDiv = document.getElementById('profileInfo');
+                    
+                    profileDiv.innerHTML = `
+                        <div class="config-card">
+                            <div class="config-details">
+                                <p><strong>ایدی تلگرام:</strong> ${userData.telegram_id}</p>
+                                <p><strong>نام کاربری:</strong> @${userData.username || 'نامشخص'}</p>
+                                <p><strong>نام کامل:</strong> ${userData.full_name || 'نامشخص'}</p>
+                                <p><strong>موجودی:</strong> ${userData.balance.toLocaleString()} تومان</p>
+                                <p><strong>تعداد سرویس‌ها:</strong> ${userData.configs.length}</p>
+                                <p><strong>تاریخ عضویت:</strong> ${new Date(userData.created_at).toLocaleDateString('fa-IR')}</p>
+                            </div>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                console.error('Error loading profile:', error);
+            }
+        }
+
+        loadProfile();
+
+        document.getElementById('logoutBtn').addEventListener('click', function() {
+            localStorage.removeItem('user');
+            window.location.href = 'login.html';
+        });
+    </script>
+</body>
+</html>
+

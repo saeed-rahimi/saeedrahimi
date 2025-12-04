@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>پنل مدیریت - Server24</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="nav-brand">Server24 - پنل مدیریت</div>
+            <div class="nav-menu">
+                <a href="admin.html" class="nav-link active">داشبورد</a>
+                <a href="admin-users.html" class="nav-link">کاربران</a>
+                <a href="admin-configs.html" class="nav-link">کانفیگ‌ها</a>
+                <a href="dashboard.html" class="nav-link">پنل کاربری</a>
+                <a href="#" id="logoutBtn" class="nav-link">خروج</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="page-header">
+            <h1>پنل مدیریت</h1>
+            <p>مدیریت سیستم</p>
+        </div>
+
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-icon">👥</div>
+                <div class="stat-info">
+                    <h3>تعداد کاربران</h3>
+                    <p id="totalUsers">0</p>
+                </div>
+            </div>
+            
+            <div class="stat-card">
+                <div class="stat-icon">📊</div>
+                <div class="stat-info">
+                    <h3>کانفیگ‌های فعال</h3>
+                    <p id="activeConfigs">0</p>
+                </div>
+            </div>
+            
+            <div class="stat-card">
+                <div class="stat-icon">💰</div>
+                <div class="stat-info">
+                    <h3>کل موجودی کاربران</h3>
+                    <p id="totalBalance">0 تومان</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const userStr = localStorage.getItem('user');
+        if (!userStr) {
+            window.location.href = 'login.html';
+        }
+
+        const user = JSON.parse(userStr);
+
+        // بررسی ادمین بودن
+        if (!user.is_admin) {
+            alert('شما دسترسی به این بخش ندارید!');
+            window.location.href = 'dashboard.html';
+        }
+
+        async function loadAdminStats() {
+            try {
+                const [usersResponse, configsResponse] = await Promise.all([
+                    fetch('/api/admin/users'),
+                    fetch('/api/admin/configs')
+                ]);
+
+                if (usersResponse.ok) {
+                    const users = await usersResponse.json();
+                    document.getElementById('totalUsers').textContent = users.length;
+                    
+                    const totalBalance = users.reduce((sum, u) => sum + (u.balance || 0), 0);
+                    document.getElementById('totalBalance').textContent = totalBalance.toLocaleString() + ' تومان';
+                }
+
+                if (configsResponse.ok) {
+                    const configs = await configsResponse.json();
+                    const active = configs.filter(c => c.is_active).length;
+                    document.getElementById('activeConfigs').textContent = active;
+                }
+            } catch (error) {
+                console.error('Error loading admin stats:', error);
+            }
+        }
+
+        loadAdminStats();
+
+        document.getElementById('logoutBtn').addEventListener('click', function() {
+            localStorage.removeItem('user');
+            window.location.href = 'login.html';
+        });
+    </script>
+</body>
+</html>
+

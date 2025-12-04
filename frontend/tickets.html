@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>پشتیبانی - Server24</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="nav-brand">Server24</div>
+            <div class="nav-menu">
+                <a href="dashboard.html" class="nav-link">داشبورد</a>
+                <a href="buy.html" class="nav-link">خرید حجم</a>
+                <a href="wallet.html" class="nav-link">کیف پول</a>
+                <a href="profile.html" class="nav-link">پروفایل</a>
+                <a href="tickets.html" class="nav-link active">پشتیبانی</a>
+                <a href="#" id="logoutBtn" class="nav-link">خروج</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="page-header">
+            <h1>پشتیبانی</h1>
+            <p>ارسال تیکت پشتیبانی</p>
+        </div>
+
+        <div class="section">
+            <h2>تیکت جدید</h2>
+            <form id="ticketForm">
+                <div class="form-group">
+                    <label for="subject">موضوع:</label>
+                    <input type="text" id="subject" name="subject" required>
+                </div>
+                <div class="form-group">
+                    <label for="message">پیام:</label>
+                    <textarea id="message" name="message" rows="5" required></textarea>
+                </div>
+                <button type="submit" class="btn btn-primary">ارسال تیکت</button>
+            </form>
+        </div>
+
+        <div class="section">
+            <h2>تیکت‌های من</h2>
+            <div id="ticketsList">
+                <p>در حال بارگذاری...</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const userStr = localStorage.getItem('user');
+        if (!userStr) {
+            window.location.href = 'login.html';
+        }
+
+        const user = JSON.parse(userStr);
+
+        async function loadTickets() {
+            try {
+                const response = await fetch(`/api/tickets/${user.id}`);
+                if (response.ok) {
+                    const tickets = await response.json();
+                    const ticketsDiv = document.getElementById('ticketsList');
+                    
+                    if (tickets.length === 0) {
+                        ticketsDiv.innerHTML = '<p>هیچ تیکتی ثبت نشده است.</p>';
+                    } else {
+                        ticketsDiv.innerHTML = tickets.map(ticket => `
+                            <div class="config-card">
+                                <div class="config-header">
+                                    <h3>${ticket.subject}</h3>
+                                    <span class="status-badge ${ticket.status === 'open' ? 'active' : 'inactive'}">
+                                        ${ticket.status === 'open' ? 'باز' : 'بسته'}
+                                    </span>
+                                </div>
+                                <div class="config-details">
+                                    <p><strong>پیام:</strong> ${ticket.message}</p>
+                                    ${ticket.admin_reply ? `<p><strong>پاسخ ادمین:</strong> ${ticket.admin_reply}</p>` : ''}
+                                    <p><strong>تاریخ:</strong> ${new Date(ticket.created_at).toLocaleString('fa-IR')}</p>
+                                </div>
+                            </div>
+                        `).join('');
+                    }
+                }
+            } catch (error) {
+                console.error('Error loading tickets:', error);
+            }
+        }
+
+        document.getElementById('ticketForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const subject = document.getElementById('subject').value;
+            const message = document.getElementById('message').value;
+            
+            try {
+                const response = await fetch('/api/tickets/create', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        user_id: user.id,
+                        subject: subject,
+                        message: message
+                    })
+                });
+
+                if (response.ok) {
+                    alert('✅ تیکت شما با موفقیت ثبت شد.');
+                    document.getElementById('ticketForm').reset();
+                    loadTickets();
+                } else {
+                    alert('خطا در ثبت تیکت. لطفاً دوباره تلاش کنید.');
+                }
+            } catch (error) {
+                console.error('Error creating ticket:', error);
+                alert('خطا در ارتباط با سرور');
+            }
+        });
+
+        loadTickets();
+
+        document.getElementById('logoutBtn').addEventListener('click', function() {
+            localStorage.removeItem('user');
+            window.location.href = 'login.html';
+        });
+    </script>
+</body>
+</html>
+

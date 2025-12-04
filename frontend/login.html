@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ورود - Server24</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <div class="login-box">
+            <div class="logo">
+                <h1>Server24</h1>
+                <p>پنل مدیریت کانفیگ</p>
+            </div>
+            
+            <form id="loginForm" class="login-form">
+                <div class="form-group">
+                    <label for="telegramId">ایدی تلگرام:</label>
+                    <input type="number" id="telegramId" name="telegramId" required placeholder="مثال: 123456789">
+                </div>
+                
+                <button type="submit" class="btn btn-primary">ورود</button>
+            </form>
+            
+            <div class="login-footer">
+                <p>برای ورود، ایدی تلگرام خود را وارد کنید</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('loginForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const telegramId = document.getElementById('telegramId').value;
+            
+            try {
+                const response = await fetch(`/api/users/${telegramId}`);
+                if (response.ok) {
+                    const user = await response.json();
+                    localStorage.setItem('user', JSON.stringify(user));
+                    window.location.href = 'dashboard.html';
+                } else {
+                    alert('کاربر یافت نشد. لطفاً ابتدا از ربات تلگرام استفاده کنید.');
+                }
+            } catch (error) {
+                alert('خطا در ارتباط با سرور');
+            }
+        });
+    </script>
+</body>
+</html>
+

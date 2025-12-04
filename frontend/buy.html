@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>خرید حجم - Server24</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="nav-brand">Server24</div>
+            <div class="nav-menu">
+                <a href="dashboard.html" class="nav-link">داشبورد</a>
+                <a href="buy.html" class="nav-link active">خرید حجم</a>
+                <a href="wallet.html" class="nav-link">کیف پول</a>
+                <a href="profile.html" class="nav-link">پروفایل</a>
+                <a href="tickets.html" class="nav-link">پشتیبانی</a>
+                <a href="#" id="logoutBtn" class="nav-link">خروج</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="page-header">
+            <h1>خرید حجم</h1>
+            <p>انتخاب پلن مورد نظر</p>
+        </div>
+
+        <div class="plans-grid" id="plansGrid">
+            <!-- پلن‌ها اینجا نمایش داده می‌شوند -->
+        </div>
+    </div>
+
+    <script>
+        const userStr = localStorage.getItem('user');
+        if (!userStr) {
+            window.location.href = 'login.html';
+        }
+
+        const user = JSON.parse(userStr);
+
+        const plans = [
+            { gb: 10, days: 30, price: 50000 },
+            { gb: 30, days: 30, price: 100000 },
+            { gb: 50, days: 30, price: 150000 },
+            { gb: 100, days: 30, price: 250000 }
+        ];
+
+        function renderPlans() {
+            const plansGrid = document.getElementById('plansGrid');
+            plansGrid.innerHTML = plans.map(plan => `
+                <div class="plan-card">
+                    <h3>پلن ${plan.gb} گیگابایت</h3>
+                    <div class="plan-price">${plan.price.toLocaleString()} تومان</div>
+                    <ul class="plan-features">
+                        <li>حجم: ${plan.gb} گیگابایت</li>
+                        <li>مدت: ${plan.days} روز</li>
+                        <li>پشتیبانی 24/7</li>
+                    </ul>
+                    <button class="btn btn-primary" onclick="buyPlan(${plan.gb}, ${plan.price})">
+                        خرید
+                    </button>
+                </div>
+            `).join('');
+        }
+
+        async function buyPlan(gb, price) {
+            try {
+                // بررسی موجودی
+                const userResponse = await fetch(`/api/users/${user.telegram_id}`);
+                if (!userResponse.ok) {
+                    alert('خطا در دریافت اطلاعات کاربر');
+                    return;
+                }
+
+                const userData = await userResponse.json();
+                if (userData.balance < price) {
+                    alert(`موجودی کافی نیست!\nموجودی فعلی: ${userData.balance.toLocaleString()} تومان\nمبلغ مورد نیاز: ${price.toLocaleString()} تومان`);
+                    return;
+                }
+
+                // ساخت کانفیگ
+                const response = await fetch('/api/configs/create', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        user_id: user.id,
+                        total_gb: gb,
+                        days: 30
+                    })
+                });
+
+                if (response.ok) {
+                    const result = await response.json();
+                    
+                    // کسر از موجودی
+                    await fetch('/api/wallet/add', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            user_id: user.id,
+                            amount: -price,
+                            description: `خرید پلن ${gb} گیگابایت`
+                        })
+                    });
+
+                    alert(`✅ کانفیگ شما با موفقیت ساخته شد!\n\nلینک کانفیگ:\n${result.link}\n\nلطفاً این لینک را در اپلیکیشن خود وارد کنید.`);
+                    window.location.href = 'dashboard.html';
+                } else {
+                    alert('خطا در ساخت کانفیگ. لطفاً دوباره تلاش کنید.');
+                }
+            } catch (error) {
+                console.error('Error buying plan:', error);
+                alert('خطا در ارتباط با سرور');
+            }
+        }
+
+        renderPlans();
+
+        document.getElementById('logoutBtn').addEventListener('click', function() {
+            localStorage.removeItem('user');
+            window.location.href = 'login.html';
+        });
+    </script>
+</body>
+</html>
+

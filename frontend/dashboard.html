@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>داشبورد - Server24</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="nav-brand">Server24</div>
+            <div class="nav-menu">
+                <a href="dashboard.html" class="nav-link active">داشبورد</a>
+                <a href="buy.html" class="nav-link">خرید حجم</a>
+                <a href="wallet.html" class="nav-link">کیف پول</a>
+                <a href="profile.html" class="nav-link">پروفایل</a>
+                <a href="tickets.html" class="nav-link">پشتیبانی</a>
+                <a href="#" id="logoutBtn" class="nav-link">خروج</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="page-header">
+            <h1>داشبورد</h1>
+            <p>خوش آمدید <span id="userName"></span></p>
+        </div>
+
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-icon">💰</div>
+                <div class="stat-info">
+                    <h3>موجودی</h3>
+                    <p id="balance">0 تومان</p>
+                </div>
+            </div>
+            
+            <div class="stat-card">
+                <div class="stat-icon">📊</div>
+                <div class="stat-info">
+                    <h3>سرویس‌های فعال</h3>
+                    <p id="activeConfigs">0</p>
+                </div>
+            </div>
+            
+            <div class="stat-card">
+                <div class="stat-icon">📈</div>
+                <div class="stat-info">
+                    <h3>ترافیک مصرفی</h3>
+                    <p id="usedTraffic">0 GB</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>سرویس‌های من</h2>
+            <div id="configsList" class="configs-list">
+                <p>در حال بارگذاری...</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // بررسی لاگین
+        const userStr = localStorage.getItem('user');
+        if (!userStr) {
+            window.location.href = 'login.html';
+        }
+
+        const user = JSON.parse(userStr);
+        document.getElementById('userName').textContent = user.full_name || user.username || 'کاربر';
+
+        // بارگذاری اطلاعات
+        async function loadDashboard() {
+            try {
+                const response = await fetch(`/api/users/${user.telegram_id}`);
+                if (response.ok) {
+                    const userData = await response.json();
+                    
+                    document.getElementById('balance').textContent = userData.balance.toLocaleString() + ' تومان';
+                    document.getElementById('activeConfigs').textContent = userData.configs.filter(c => c.is_active).length;
+                    
+                    const totalUsed = userData.configs.reduce((sum, c) => sum + (c.used_gb || 0), 0);
+                    document.getElementById('usedTraffic').textContent = totalUsed.toFixed(2) + ' GB';
+                    
+                    // نمایش کانفیگ‌ها
+                    const configsList = document.getElementById('configsList');
+                    if (userData.configs.length === 0) {
+                        configsList.innerHTML = '<p>شما هنوز هیچ سرویسی ندارید. <a href="buy.html">خرید حجم</a></p>';
+                    } else {
+                        configsList.innerHTML = userData.configs.map(config => `
+                            <div class="config-card">
+                                <div class="config-header">
+                                    <h3>سرویس ${config.id}</h3>
+                                    <span class="status-badge ${config.is_active ? 'active' : 'inactive'}">
+                                        ${config.is_active ? 'فعال' : 'غیرفعال'}
+                                    </span>
+                                </div>
+                                <div class="config-details">
+                                    <p><strong>حجم کل:</strong> ${config.total_gb} GB</p>
+                                    <p><strong>مصرف شده:</strong> ${config.used_gb.toFixed(2)} GB</p>
+                                    <p><strong>باقی‌مانده:</strong> ${(config.total_gb - config.used_gb).toFixed(2)} GB</p>
+                                    ${config.expire_date ? `<p><strong>تاریخ انقضا:</strong> ${new Date(config.expire_date).toLocaleDateString('fa-IR')}</p>` : ''}
+                                </div>
+                            </div>
+                        `).join('');
+                    }
+                }
+            } catch (error) {
+                console.error('Error loading dashboard:', error);
+            }
+        }
+
+        loadDashboard();
+
+        // خروج
+        document.getElementById('logoutBtn').addEventListener('click', function() {
+            localStorage.removeItem('user');
+            window.location.href = 'login.html';
+        });
+    </script>
+</body>
+</html>
+
