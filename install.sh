@@ -65,7 +65,7 @@ apt-get upgrade -y
 
 # قدم 2: نصب پیش‌نیازها
 print_info "نصب پیش‌نیازها..."
-apt-get install -y python3 python3-pip python3-venv curl wget git ufw certbot python3-certbot-nginx
+apt-get install -y python3 python3-pip python3-venv curl wget git ufw certbot python3-certbot-nginx unzip
 
 # نصب Nginx
 print_info "نصب Nginx..."
