@@ -11,15 +11,15 @@
 ### روش 1: نصب مستقیم از GitHub
 
 ```bash
-bash <(curl -s https://raw.githubusercontent.com/YourGit/server24/main/install.sh)
+bash <(curl -s https://raw.githubusercontent.com/saeed-rahimi/saeedrahimi/main/install.sh)
 ```
 
 ### روش 2: نصب دستی
 
 1. کلون کردن ریپازیتوری:
 ```bash
-git clone https://github.com/YourGit/server24.git
-cd server24
+git clone https://github.com/saeed-rahimi/saeedrahimi.git
+cd saeedrahimi
 ```
 
 2. اجرای اسکریپت نصب:

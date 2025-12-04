@@ -176,6 +176,7 @@ sed -i "s/DOMAIN_PLACEHOLDER/$DOMAIN/g" /usr/local/etc/xray/config.json
 # قدم 4: راه‌اندازی دیتابیس
 print_info "راه‌اندازی دیتابیس..."
 mkdir -p $PROJECT_DIR/database
+export ADMIN_ID=$ADMIN_ID
 python3 << 'PYTHON_SCRIPT'
 import sqlite3
 import os
@@ -264,8 +265,10 @@ conn.close()
 print("✅ دیتابیس با موفقیت ساخته شد")
 PYTHON_SCRIPT
 
-# کپی فایل‌های پروژه
-print_info "کپی فایل‌های پروژه..."
+# دانلود فایل‌های پروژه از GitHub
+print_info "دانلود فایل‌های پروژه از GitHub..."
+GITHUB_REPO="https://raw.githubusercontent.com/saeed-rahimi/saeedrahimi/main"
+
 # ساخت پوشه‌های لازم
 mkdir -p $PROJECT_DIR/backend
 mkdir -p $PROJECT_DIR/bot
@@ -274,19 +277,46 @@ mkdir -p $PROJECT_DIR/scripts
 mkdir -p $PROJECT_DIR/configs
 mkdir -p $PROJECT_DIR/database
 
-# کپی فایل‌ها (اگر از git clone شده باشد)
-if [ -d "./backend" ]; then
-    cp -r ./backend/* $PROJECT_DIR/backend/
-    cp -r ./bot/* $PROJECT_DIR/bot/
-    cp -r ./frontend/* $PROJECT_DIR/frontend/
-    cp -r ./scripts/* $PROJECT_DIR/scripts/
-    cp -r ./configs/* $PROJECT_DIR/configs/ 2>/dev/null || true
-else
-    print_warning "فایل‌های پروژه یافت نشد. لطفاً بعداً فایل‌ها را در $PROJECT_DIR کپی کنید."
-fi
+# دانلود فایل‌های backend
+print_info "دانلود فایل‌های backend..."
+curl -sL "$GITHUB_REPO/backend/main.py" -o $PROJECT_DIR/backend/main.py
+curl -sL "$GITHUB_REPO/backend/requirements.txt" -o $PROJECT_DIR/backend/requirements.txt
+
+# دانلود فایل‌های bot
+print_info "دانلود فایل‌های bot..."
+curl -sL "$GITHUB_REPO/bot/bot.py" -o $PROJECT_DIR/bot/bot.py
+curl -sL "$GITHUB_REPO/bot/requirements.txt" -o $PROJECT_DIR/bot/requirements.txt
+
+# دانلود فایل‌های frontend
+print_info "دانلود فایل‌های frontend..."
+curl -sL "$GITHUB_REPO/frontend/login.html" -o $PROJECT_DIR/frontend/login.html
+curl -sL "$GITHUB_REPO/frontend/dashboard.html" -o $PROJECT_DIR/frontend/dashboard.html
+curl -sL "$GITHUB_REPO/frontend/buy.html" -o $PROJECT_DIR/frontend/buy.html
+curl -sL "$GITHUB_REPO/frontend/wallet.html" -o $PROJECT_DIR/frontend/wallet.html
+curl -sL "$GITHUB_REPO/frontend/profile.html" -o $PROJECT_DIR/frontend/profile.html
+curl -sL "$GITHUB_REPO/frontend/tickets.html" -o $PROJECT_DIR/frontend/tickets.html
+curl -sL "$GITHUB_REPO/frontend/admin.html" -o $PROJECT_DIR/frontend/admin.html
+curl -sL "$GITHUB_REPO/frontend/admin-users.html" -o $PROJECT_DIR/frontend/admin-users.html
+curl -sL "$GITHUB_REPO/frontend/admin-configs.html" -o $PROJECT_DIR/frontend/admin-configs.html
+curl -sL "$GITHUB_REPO/frontend/index.html" -o $PROJECT_DIR/frontend/index.html
+curl -sL "$GITHUB_REPO/frontend/style.css" -o $PROJECT_DIR/frontend/style.css
+
+# دانلود فایل‌های scripts
+print_info "دانلود فایل‌های scripts..."
+curl -sL "$GITHUB_REPO/scripts/xray_manager.py" -o $PROJECT_DIR/scripts/xray_manager.py
 
 # تنظیم دسترسی‌ها
 chmod +x $PROJECT_DIR/scripts/*.py 2>/dev/null || true
+
+# بررسی موفقیت دانلود
+if [ ! -f "$PROJECT_DIR/backend/main.py" ]; then
+    print_error "خطا در دانلود فایل‌های پروژه از GitHub!"
+    print_warning "لطفاً دستی فایل‌ها را از GitHub دانلود کنید:"
+    print_warning "git clone https://github.com/saeed-rahimi/saeedrahimi.git"
+    exit 1
+fi
+
+print_info "✅ فایل‌های پروژه با موفقیت دانلود شدند."
 
 # ساخت فایل .env
 print_info "ساخت فایل .env..."
@@ -297,7 +327,16 @@ DOMAIN=$DOMAIN
 PROJECT_DIR=$PROJECT_DIR
 DATABASE_PATH=$PROJECT_DIR/database/server24.db
 XRAY_CONFIG_PATH=/usr/local/etc/xray/config.json
+FRONTEND_PATH=$PROJECT_DIR/frontend
 EOF
+
+# تنظیم environment variables برای سرویس‌ها
+export BOT_TOKEN=$BOT_TOKEN
+export ADMIN_ID=$ADMIN_ID
+export DOMAIN=$DOMAIN
+export DATABASE_PATH=$PROJECT_DIR/database/server24.db
+export XRAY_CONFIG_PATH=/usr/local/etc/xray/config.json
+export FRONTEND_PATH=$PROJECT_DIR/frontend
 
 # قدم 5: ساخت سرویس FastAPI
 print_info "ساخت سرویس FastAPI..."
@@ -310,7 +349,8 @@ After=network.target
 Type=simple
 User=root
 WorkingDirectory=$PROJECT_DIR/backend
-Environment="PATH=$PROJECT_DIR/venv/bin:/usr/local/bin:/usr/bin:/bin"
+Environment="PATH=/usr/local/bin:/usr/bin:/bin"
+EnvironmentFile=$PROJECT_DIR/.env
 ExecStart=/usr/bin/python3 -m uvicorn main:app --host 0.0.0.0 --port 8000
 Restart=on-failure
 RestartSec=5s
@@ -330,7 +370,8 @@ After=network.target server24-api.service
 Type=simple
 User=root
 WorkingDirectory=$PROJECT_DIR/bot
-Environment="PATH=$PROJECT_DIR/venv/bin:/usr/local/bin:/usr/bin:/bin"
+Environment="PATH=/usr/local/bin:/usr/bin:/bin"
+EnvironmentFile=$PROJECT_DIR/.env
 ExecStart=/usr/bin/python3 bot.py
 Restart=on-failure
 RestartSec=5s

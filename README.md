@@ -17,7 +17,7 @@
 ## 🚀 نصب سریع
 
 ```bash
-bash <(curl -s https://raw.githubusercontent.com/YourGit/server24/main/install.sh)
+bash <(curl -s https://raw.githubusercontent.com/saeed-rahimi/saeedrahimi/main/install.sh)
 ```
 
 در حین نصب، اطلاعات زیر را وارد کنید:
