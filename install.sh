@@ -380,9 +380,62 @@ RestartSec=5s
 WantedBy=multi-user.target
 EOF
 
-# قدم 7: تنظیم Nginx
-print_info "تنظیم Nginx..."
+# قدم 7: تنظیم اولیه Nginx (بدون SSL)
+print_info "تنظیم اولیه Nginx..."
+mkdir -p /var/www/html
+
+# ساخت کانفیگ اولیه Nginx (فقط HTTP)
 cat > /etc/nginx/sites-available/server24 << EOF
+server {
+    listen 80;
+    server_name $DOMAIN;
+
+    location /.well-known/acme-challenge/ {
+        root /var/www/html;
+    }
+
+    location /api/ {
+        proxy_pass http://127.0.0.1:8000/;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+    }
+
+    location / {
+        root $PROJECT_DIR/frontend;
+        try_files \$uri \$uri/ /index.html;
+        index index.html;
+    }
+
+    location /vless {
+        proxy_pass http://127.0.0.1:443;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade \$http_upgrade;
+        proxy_set_header Connection "upgrade";
+    }
+}
+EOF
+
+ln -sf /etc/nginx/sites-available/server24 /etc/nginx/sites-enabled/
+rm -f /etc/nginx/sites-enabled/default
+
+# تست و راه‌اندازی Nginx
+nginx -t && systemctl restart nginx || {
+    print_warning "خطا در راه‌اندازی Nginx. ادامه می‌دهیم..."
+}
+
+# قدم 8: دریافت SSL
+print_info "دریافت گواهینامه SSL..."
+certbot certonly --webroot -w /var/www/html -d $DOMAIN --non-interactive --agree-tos --register-unsafely-without-email --email admin@$DOMAIN 2>/dev/null || {
+    print_warning "دریافت SSL با مشکل مواجه شد. می‌توانید بعداً دستی انجام دهید:"
+    print_warning "certbot certonly --webroot -w /var/www/html -d $DOMAIN"
+}
+
+# قدم 9: به‌روزرسانی Nginx با SSL (اگر SSL دریافت شد)
+if [ -f "/etc/letsencrypt/live/$DOMAIN/fullchain.pem" ]; then
+    print_info "به‌روزرسانی Nginx با SSL..."
+    cat > /etc/nginx/sites-available/server24 << EOF
 server {
     listen 80;
     server_name $DOMAIN;
@@ -429,24 +482,19 @@ server {
     }
 }
 EOF
+    nginx -t && systemctl reload nginx || print_warning "خطا در به‌روزرسانی Nginx با SSL"
+else
+    print_warning "SSL دریافت نشد. Nginx با HTTP کار می‌کند. بعداً SSL را دریافت کنید."
+fi
 
-ln -sf /etc/nginx/sites-available/server24 /etc/nginx/sites-enabled/
-rm -f /etc/nginx/sites-enabled/default
-
-# قدم 8: دریافت SSL
-print_info "دریافت گواهینامه SSL..."
-certbot certonly --nginx -d $DOMAIN --non-interactive --agree-tos --register-unsafely-without-email || {
-    print_warning "دریافت SSL با مشکل مواجه شد. لطفاً بعداً دستی انجام دهید."
-}
-
-# قدم 9: تنظیم فایروال
+# قدم 10: تنظیم فایروال
 print_info "تنظیم فایروال..."
 ufw --force enable
 ufw allow 22/tcp
 ufw allow 80/tcp
 ufw allow 443/tcp
 
-# قدم 10: فعال‌سازی سرویس‌ها
+# قدم 11: فعال‌سازی سرویس‌ها
 print_info "فعال‌سازی سرویس‌ها..."
 systemctl daemon-reload
 systemctl enable xray
@@ -456,7 +504,15 @@ systemctl enable nginx
 
 # راه‌اندازی سرویس‌ها
 print_info "راه‌اندازی سرویس‌ها..."
-systemctl restart nginx
+
+# راه‌اندازی Nginx (اگر SSL دریافت شده باشد)
+if [ -f "/etc/letsencrypt/live/$DOMAIN/fullchain.pem" ]; then
+    systemctl restart nginx
+else
+    print_warning "Nginx با HTTP راه‌اندازی می‌شود. بعداً SSL را دریافت کنید."
+    systemctl restart nginx || print_warning "خطا در راه‌اندازی Nginx"
+fi
+
 systemctl restart xray
 systemctl restart server24-api
 systemctl restart server24-bot
